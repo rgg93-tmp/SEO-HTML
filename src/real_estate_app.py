@@ -39,7 +39,10 @@ async def favicon() -> FileResponse:
     return FileResponse(favicon_path)
 
 
-def generate_html_content(property_data: str, template_style: str = "modern", use_ai: bool = True) -> str:
+import asyncio
+
+
+async def generate_html_content(property_data: str, template_style: str = "modern", use_ai: bool = True) -> str:
     """
     Generate HTML content for a real estate listing based on property data.
 
@@ -59,14 +62,14 @@ def generate_html_content(property_data: str, template_style: str = "modern", us
         html_generator.template_style = template_style
 
         # Generate HTML content
-        html_content = html_generator.generate_html(data)
+        html_content = await html_generator.generate_html(data)
 
         return html_content
 
     except json.JSONDecodeError:
         return "<p>Error: Invalid JSON data provided</p>"
     except Exception as e:
-        return f"<p>Error generating content: {str(e)}</p>"
+        return f"<p>Error generating content: {str(e)}"
 
 
 # Build Gradio interface
@@ -84,23 +87,21 @@ with gr.Blocks(
 
             # Sample property data
             sample_data = {
-                "address": "123 Main Street",
-                "city": "San Francisco, CA",
+                "title": "Modern home in San Francisco",
+                "location": {"city": "San Francisco", "neighborhood": "Nob Hill"},
+                "features": {
+                    "bedrooms": 3,
+                    "bathrooms": 2,
+                    "area_sqm": 167,
+                    "balcony": True,
+                    "parking": True,
+                    "elevator": False,
+                    "floor": 1,
+                    "year_built": 2010,
+                },
                 "price": 850000,
-                "beds": 3,
-                "baths": 2,
-                "sqft": 1800,
-                "description": "Beautiful modern home in a prime location. This stunning property features an open floor plan, updated kitchen with granite countertops, and a spacious backyard perfect for entertaining. Located in a highly sought-after neighborhood with excellent schools and convenient access to shopping and transportation.",
-                "features": [
-                    "Open floor plan",
-                    "Updated kitchen with granite countertops",
-                    "Hardwood floors throughout",
-                    "Spacious backyard",
-                    "2-car garage",
-                    "Central air conditioning",
-                    "Fresh paint",
-                    "New appliances",
-                ],
+                "listing_type": "sale",
+                "language": "en",
             }
 
             gr.Markdown("**Property Data (JSON):**")

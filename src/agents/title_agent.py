@@ -27,8 +27,3 @@ class TitleAgent(AssistantAgent):
             "Generate a title for the following property. Only output the title string, under 60 characters. Do not include any extra content, questions, or options.\n"
             f"Property data: {property_data}"
         )
-        super().__init__(
-            name=name,
-            model_client=model_client,
-            system_message="You are a real estate SEO expert. Generate property titles under 60 characters, clear and attractive, using the provided data.",
-        )
