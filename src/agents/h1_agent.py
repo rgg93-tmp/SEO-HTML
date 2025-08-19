@@ -27,8 +27,3 @@ class H1Agent(AssistantAgent):
             "Generate a main headline (<h1>) for the following property. Only output the headline string. Do not include any extra content, questions, or options.\n"
             f"Property data: {property_data}"
         )
-        super().__init__(
-            name=name,
-            model_client=model_client,
-            system_message="You are a real estate SEO expert. Generate main headlines (<h1>) for properties, clear and attractive, using the provided data.",
-        )

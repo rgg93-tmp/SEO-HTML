@@ -27,8 +27,3 @@ class DescriptionAgent(AssistantAgent):
             "Generate a property description (500-700 characters) for the following property. Only output the description string. Do not include any extra content, questions, or options.\n"
             f"Property data: {property_data}"
         )
-        super().__init__(
-            name=name,
-            model_client=model_client,
-            system_message="You are a real estate copywriting expert. Generate complete and engaging property descriptions (500-700 characters, using <p>), based on the provided data.",
-        )

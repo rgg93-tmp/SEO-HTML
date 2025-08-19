@@ -27,8 +27,3 @@ class KeyFeaturesAgent(AssistantAgent):
             "Generate a list of 3 to 5 key features for the following property, separated by commas. Only output the key features string. Do not include any extra content, questions, or options.\n"
             f"Property data: {property_data}"
         )
-        super().__init__(
-            name=name,
-            model_client=model_client,
-            system_message="You are a real estate copywriting expert. Generate lists of 3 to 5 key features (<li>) for properties, using the provided data.",
-        )
