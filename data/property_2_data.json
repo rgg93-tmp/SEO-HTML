@@ -1,0 +1,19 @@
+{
+  "address": "456 Oak Avenue",
+  "city": "Los Angeles, CA",
+  "price": 1200000,
+  "beds": 4,
+  "baths": 3,
+  "sqft": 2200,
+  "description": "Luxurious family home with stunning views. This exceptional property offers the perfect blend of comfort and elegance. Features include a gourmet kitchen, master suite with spa-like bathroom, and a beautiful garden with outdoor entertainment area. Located in a prestigious neighborhood with top-rated schools.",
+  "features": [
+    "Gourmet kitchen with island",
+    "Master suite with spa bathroom",
+    "Beautiful garden with outdoor entertainment area",
+    "3-car garage",
+    "Smart home features",
+    "Solar panels",
+    "Pool and spa",
+    "Wine cellar"
+  ]
+}

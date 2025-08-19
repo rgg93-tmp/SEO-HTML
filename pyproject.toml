@@ -1,0 +1,23 @@
+[project]
+name = "real-estate-content-generator"
+version = "0.1.0"
+description = "AI-powered Real Estate Website Content Generator that creates high-quality, SEO-optimized HTML content for property listing pages"
+readme = "README.md"
+requires-python = ">=3.10.4,<3.12"
+dependencies = [
+    "gradio>=5.16.1",
+    "httpx==0.28.1",
+    "python-dotenv>=1.0.1",
+    "openai==1.66.5",
+    "uvicorn==0.34.0",
+    "fastapi==0.115.12",
+    "autogen-core>=0.7.3",
+    "autogen-ext[ollama]",
+    "autogen-agentchat>=0.7.3",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.17.0",
+    "pytest>=8.4.1",
+]

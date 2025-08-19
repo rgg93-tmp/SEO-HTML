@@ -1,0 +1,19 @@
+{
+  "address": "123 Main Street",
+  "city": "San Francisco, CA",
+  "price": 850000,
+  "beds": 3,
+  "baths": 2,
+  "sqft": 1800,
+  "description": "Beautiful modern home in a prime location. This stunning property features an open floor plan, updated kitchen with granite countertops, and a spacious backyard perfect for entertaining. Located in a highly sought-after neighborhood with excellent schools and convenient access to shopping and transportation.",
+  "features": [
+    "Open floor plan",
+    "Updated kitchen with granite countertops",
+    "Hardwood floors throughout",
+    "Spacious backyard",
+    "2-car garage",
+    "Central air conditioning",
+    "Fresh paint",
+    "New appliances"
+  ]
+}

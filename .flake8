@@ -1,0 +1,13 @@
+[flake8]
+max-line-length = 140
+max-complexity = 10
+exclude =
+    .git,
+    __pycache__,
+    build,
+    dist,
+    .venv,
+    graph_of_thoughts,
+
+ignore = 
+    E501,
