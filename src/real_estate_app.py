@@ -6,27 +6,7 @@ from fastapi.responses import FileResponse
 from typing import Tuple
 
 from core.html_generator import HTMLGenerator
-from models.ollama_model import OllamaModel
-
-
-# Initialize the HTML generator (will be created per request to handle errors gracefully)
-def create_html_generator(use_language_model: bool = True):
-    """Create an HTML generator instance with optional language model."""
-    try:
-        if use_language_model:
-            language_model = OllamaModel(model_name="gemma3:1b-it-qat", temperature=0.7, max_tokens=512)
-            return HTMLGenerator(
-                language_model=language_model,
-                template_style="modern",
-                include_seo=True,
-                multilingual=False,
-                default_language="en",
-            )
-        else:
-            return HTMLGenerator(language_model=None, template_style="modern", include_seo=True)
-    except Exception as e:
-        logging.warning(f"Could not initialize language model: {e}")
-        return HTMLGenerator(language_model=None, template_style="modern", include_seo=True)
+from config.options import LANGUAGE_OPTIONS, TONE_OPTIONS
 
 
 async def favicon() -> FileResponse:
@@ -39,17 +19,18 @@ async def favicon() -> FileResponse:
     return FileResponse(favicon_path)
 
 
-import asyncio
-
-
-async def generate_html_content(property_data: str, template_style: str = "modern", use_ai: bool = True) -> str:
+async def generate_html_content(
+    property_data: str,
+    language: str = "en",
+    tone: str = "professional",
+) -> str:
     """
     Generate HTML content for a real estate listing based on property data.
 
     Args:
         property_data: JSON string containing property information
-        template_style: Style template to use ("modern", "classic", "minimal")
-        use_ai: Whether to use AI enhancement for descriptions
+        language: Language for content generation (en, es, pt)
+        tone: Tone for content generation (professional, friendly, luxury, etc.)
 
     Returns:
         str: Generated HTML content
@@ -57,12 +38,17 @@ async def generate_html_content(property_data: str, template_style: str = "moder
     try:
         data = json.loads(property_data)
 
-        # Create HTML generator with specified settings
-        html_generator = create_html_generator(use_ai)
-        html_generator.template_style = template_style
+        # Remove language and tone from property data if they exist
+        if "language" in data:
+            del data["language"]
+        if "tone" in data:
+            del data["tone"]
 
-        # Generate HTML content
-        html_content = await html_generator.generate_html(data)
+        # Create HTML generator
+        html_generator = HTMLGenerator()
+
+        # Generate HTML content with language and tone parameters
+        html_content = await html_generator.generate_html(data, language=language, tone=tone)
 
         return html_content
 
@@ -85,7 +71,7 @@ with gr.Blocks(
                 "Create high-quality, SEO-optimized HTML content for property listing pages based on structured data."
             )
 
-            # Sample property data
+            # Sample property data (without language/tone - those come from UI)
             sample_data = {
                 "title": "Modern home in San Francisco",
                 "location": {"city": "San Francisco", "neighborhood": "Nob Hill"},
@@ -101,7 +87,6 @@ with gr.Blocks(
                 },
                 "price": 850000,
                 "listing_type": "sale",
-                "language": "en",
             }
 
             gr.Markdown("**Property Data (JSON):**")
@@ -112,14 +97,24 @@ with gr.Blocks(
                 value=json.dumps(sample_data, indent=2),
             )
 
-            # Settings panel
-            with gr.Accordion(label="Generation Settings", open=False):
-                template_style = gr.Radio(
-                    choices=["modern", "classic", "minimal"], label="Template Style", value="modern"
+            # Language and Tone selection
+            with gr.Row():
+                language_dropdown = gr.Dropdown(
+                    choices=list(LANGUAGE_OPTIONS.keys()),
+                    value="en",
+                    label="Language",
+                    info="Select the language for content generation",
                 )
-                use_ai = gr.Checkbox(
-                    label="Use AI Enhancement", value=True, info="Enhance descriptions using language model"
+                tone_dropdown = gr.Dropdown(
+                    choices=list(TONE_OPTIONS.keys()),
+                    value="professional",
+                    label="Tone",
+                    info="Select the tone/style for the content",
                 )
+
+            # Settings panel (currently empty but could be expanded)
+            with gr.Accordion(label="Advanced Settings", open=False):
+                gr.Markdown("*No additional settings currently available.*")
 
             run_btn = gr.Button("Generate HTML Content", variant="primary")
 
@@ -129,7 +124,7 @@ with gr.Blocks(
 
     run_btn.click(
         fn=generate_html_content,
-        inputs=[property_input, template_style, use_ai],
+        inputs=[property_input, language_dropdown, tone_dropdown],
         outputs=[output_html],
     )
 

@@ -3,31 +3,16 @@ import json
 import os
 import asyncio
 from core.html_generator import HTMLGenerator
-from models.ollama_model import OllamaModel
 
-# Set logging level to INFO
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 
 
 async def main():
     """Main function to generate sample HTML content from property data."""
 
-    # Initialize the HTML generator with optional language model
-    # You can set language_model=None to disable AI enhancement
-    try:
-        language_model = OllamaModel(model_name="gemma3:1b-it-qat", temperature=0.7, max_tokens=512)
-        html_generator = HTMLGenerator(
-            language_model=language_model,
-            template_style="modern",
-            include_seo=True,
-            multilingual=False,
-            default_language="en",
-        )
-        logging.info("HTML generator initialized with language model")
-    except Exception as e:
-        logging.warning(f"Could not initialize language model: {e}")
-        html_generator = HTMLGenerator(language_model=None, template_style="modern", include_seo=True)
-        logging.info("HTML generator initialized without language model")
+    # Initialize the HTML generator
+    html_generator = HTMLGenerator()
+    logging.info("HTML generator initialized.")
 
     # Sample property data
     sample_properties = [
@@ -78,12 +63,19 @@ async def main():
             json.dump(property_data, f, indent=2)
 
         # Generate and save HTML content using the HTML generator
-        html_content = await html_generator.generate_html(property_data)
+        # For demo purposes, we'll use Spanish and luxury tone for property 1, English professional for property 2
+        if i == 1:
+            html_content = await html_generator.generate_html(property_data, language="es", tone="luxury")
+        else:
+            html_content = await html_generator.generate_html(property_data, language="en", tone="professional")
+
         html_filename = f"data/property_{i}_listing.html"
         with open(html_filename, "w") as f:
             f.write(html_content)
 
         logging.info(f"Generated {json_filename} and {html_filename}")
+
+        break
 
     logging.info("Sample property listings generated successfully!")
 
