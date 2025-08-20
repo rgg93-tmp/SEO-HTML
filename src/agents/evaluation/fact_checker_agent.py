@@ -38,12 +38,12 @@ class FactCheckerAgent(AssistantAgent):
         Returns:
             Standardized evaluation results dictionary
         """
-        prompt = self.build_fact_checking_prompt(content, property_data)
+        prompt = self.build_fact_checking_prompt(content=content, property_data=property_data)
         response = await self.run(task=prompt)
 
         # Parse response (expecting JSON format)
         try:
-            result = json.loads(response.messages[-1].content.strip())
+            result = json.loads(s=response.messages[-1].content.strip())
             score = float(result.get("score", 0.5))
             feedback = result.get("feedback", "No feedback available.")
         except (json.JSONDecodeError, ValueError, KeyError):

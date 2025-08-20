@@ -15,6 +15,8 @@ from agents.content_generation.call_to_action_agent import CallToActionAgent
 from evaluate.complete_evaluator import CompleteEvaluator
 from agents.evaluation.improvement_suggestion_agent import ImprovementSuggestionAgent
 
+from config.options import LANGUAGE_OPTIONS, TONE_OPTIONS
+
 
 class HTMLGenerator:
     """
@@ -55,30 +57,31 @@ class HTMLGenerator:
     async def generate_html(
         self, property_data: Dict[str, Any], language: str = "en", tone: str = "professional"
     ) -> str:
-        # Convertir código de idioma a nombre completo solo para los agentes
-        language_names = {"en": "English", "es": "Spanish", "pt": "Portuguese"}
-        agent_language = language_names.get(language, language)
-        """
-        Generate complete HTML for a real estate listing using holistic iterative refinement.
-        """
-        self.logger.info(f"Generating initial content drafts in {agent_language} with {tone} tone...")
+        if language not in LANGUAGE_OPTIONS:
+            raise ValueError(
+                f"Unsupported language: {language}. Supported languages are: {list(LANGUAGE_OPTIONS.keys())}"
+            )
+        if tone not in TONE_OPTIONS:
+            raise ValueError(f"Unsupported tone: {tone}. Supported tones are: {list(TONE_OPTIONS.keys())}")
+        language_name = LANGUAGE_OPTIONS.get(language, None).get("name", language)
+        self.logger.info(f"Generating initial content drafts in {language_name} with {tone} tone...")
         tasks = {
-            section: agent.generate_initial(property_data, agent_language, tone)
+            section: agent.generate_initial(property_data=property_data, language=language_name, tone=tone)
             for section, agent in self.agents.items()
         }
         results = await asyncio.gather(*tasks.values())
         self.sections = dict(zip(tasks.keys(), results))
-        print(self.sections)
         # Holistic iterative refinement process
         await self._refine_html_holistically(
-            property_data,
-            self.complete_evaluator,
-            self.improvement_agent,
-            self.agents,
-            agent_language,
-            tone,
+            property_data=property_data,
+            complete_evaluator=self.complete_evaluator,
+            improvement_agent=self.improvement_agent,
+            agents=self.agents,
+            language=language,
+            language_name=language_name,
+            tone=tone,
         )
-        return self._assemble_html_document(language)
+        return self._assemble_html_document(language=language)
 
     async def _refine_html_holistically(
         self,
@@ -86,7 +89,8 @@ class HTMLGenerator:
         complete_evaluator: CompleteEvaluator,
         improvement_agent: ImprovementSuggestionAgent,
         agents: Dict[str, Any],
-        language: str = "English",
+        language: str = "en",
+        language_name: Optional[str] = "English",
         tone: str = "professional",
     ) -> None:
         """
@@ -95,31 +99,58 @@ class HTMLGenerator:
         for iteration in range(self.max_iterations):
             self.logger.info(f"--- Holistic Refinement Iteration {iteration + 1} ---")
             # Ensamblar el HTML actual
-            current_html = self._assemble_html_document(language)
+            current_html = self._assemble_html_document(language=language)
+            print("###########################" * 40)
             print(current_html)
+            print("###########################" * 40)
             # Evaluar el HTML
             evaluation_results = await complete_evaluator.evaluate_html_complete(
-                current_html, property_data, language, tone
+                html_content=current_html,
+                property_data=property_data,
+                language=language,
+                language_name=language_name,
+                tone=tone,
             )
-            self._display_evaluation_summary(evaluation_results)
+            print("###########################" * 40)
+            print(evaluation_results)
+            print("###########################" * 40)
+            self._display_evaluation_summary(evaluation_results=evaluation_results)
             if not evaluation_results.get("needs_improvement", False):
                 self.logger.info("Holistic refinement complete: Content quality is excellent.")
                 break
             section_improvements = await improvement_agent.generate_section_improvements(
-                evaluation_results, property_data, language, tone
+                evaluation_results=evaluation_results,
+                property_data=property_data,
+                language_name=language_name,
+                tone=tone,
             )
+            print("###########################" * 40)
+            print(section_improvements)
+            print("###########################" * 40)
+
             if not section_improvements:
                 self.logger.info("No actionable improvement suggestions were generated. Finalizing content.")
                 break
             # Refinar las secciones
-        self.sections = await self._apply_section_refinements(
-            self.sections, section_improvements, property_data, agents, language, tone
-        )
+            self.sections = await self._apply_section_refinements(
+                sections=self.sections,
+                section_improvements=section_improvements,
+                property_data=property_data,
+                agents=agents,
+                language_name=language_name,
+                tone=tone,
+            )
         # Evaluación final
-        final_html = self._assemble_html_document(language)
+        final_html = self._assemble_html_document(language=language)
         print(final_html)
-        evaluation_results = await complete_evaluator.evaluate_html_complete(final_html, property_data, language, tone)
-        self._display_evaluation_summary(evaluation_results)
+        evaluation_results = await complete_evaluator.evaluate_html_complete(
+            html_content=final_html,
+            property_data=property_data,
+            language=language,
+            language_name=language_name,
+            tone=tone,
+        )
+        self._display_evaluation_summary(evaluation_results=evaluation_results)
 
     def _display_evaluation_summary(self, evaluation_results: Dict[str, Any]):
         """
@@ -145,7 +176,7 @@ class HTMLGenerator:
         section_improvements: Dict[str, Dict[str, Any]],
         property_data: Dict[str, Any],
         agents: Dict[str, Any],
-        language: str,
+        language_name: str,
         tone: str,
     ) -> Dict[str, str]:
         """
@@ -156,7 +187,7 @@ class HTMLGenerator:
             section_improvements: Section-specific improvement suggestions
             property_data: Property data for context
             agents: Content generation agents
-            language: Target language
+            language_name: Target language
             tone: Target tone
 
         Returns:
@@ -177,7 +208,11 @@ class HTMLGenerator:
 
                 # Apply refinement using the appropriate agent
                 refined_content = await agents[section_name].refine(
-                    property_data, current_content, suggestion, language, tone
+                    property_data=property_data,
+                    current_content=current_content,
+                    suggestion=suggestion,
+                    language=language_name,
+                    tone=tone,
                 )
 
                 # Asignar el contenido refinado directamente; el wrapping se hace en _assemble_html_document
@@ -204,7 +239,7 @@ class HTMLGenerator:
                 lines = [line.strip() for line in content.strip().split("\n") if line.strip()]
                 list_items = []
                 for line in lines:
-                    clean_line = re.sub(r"^[•\-*\.\s]+", "", line).strip()
+                    clean_line = re.sub(pattern=r"^[•\-*\.\s]+", repl="", string=line).strip()
                     if clean_line:
                         list_items.append(f"<li>{clean_line}</li>")
                 list_content = "\n".join(list_items) if list_items else "<li>No features listed</li>"
@@ -217,13 +252,20 @@ class HTMLGenerator:
                 return content
 
         # Defaults for each section
-        title = wrap("title", self.sections.get("title", "Property Listing"))
-        meta = wrap("meta", self.sections.get("meta", ""))
-        h1 = wrap("h1", self.sections.get("h1", "Property Listing"))
-        description = wrap("description", self.sections.get("description", "Property description"))
-        key_features = wrap("key_features", self.sections.get("key_features", "No features listed"))
-        neighborhood = wrap("neighborhood", self.sections.get("neighborhood", "Neighborhood information"))
-        call_to_action = wrap("call_to_action", self.sections.get("call_to_action", "Contact us for more information"))
+        title = wrap(section_name="title", content=self.sections.get("title", "Property Listing"))
+        meta = wrap(section_name="meta", content=self.sections.get("meta", ""))
+        h1 = wrap(section_name="h1", content=self.sections.get("h1", "Property Listing"))
+        description = wrap(section_name="description", content=self.sections.get("description", "Property description"))
+        key_features = wrap(
+            section_name="key_features", content=self.sections.get("key_features", "No features listed")
+        )
+        neighborhood = wrap(
+            section_name="neighborhood", content=self.sections.get("neighborhood", "Neighborhood information")
+        )
+        call_to_action = wrap(
+            section_name="call_to_action",
+            content=self.sections.get("call_to_action", "Contact us for more information"),
+        )
 
         html_template = f"""<!DOCTYPE html>
 <html lang="{language}">

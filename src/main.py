@@ -53,24 +53,26 @@ async def main():
     ]
 
     # Ensure data directory exists
-    os.makedirs("data", exist_ok=True)
+    os.makedirs(name="data", exist_ok=True)
 
     # Generate HTML files for each property
-    for i, property_data in enumerate(sample_properties, 1):
+    for i, property_data in enumerate(iterable=sample_properties, start=1):
         # Save property data as JSON
         json_filename = f"data/property_{i}_data.json"
-        with open(json_filename, "w") as f:
-            json.dump(property_data, f, indent=2)
+        with open(file=json_filename, mode="w") as f:
+            json.dump(obj=property_data, fp=f, indent=2)
 
         # Generate and save HTML content using the HTML generator
         # For demo purposes, we'll use Spanish and luxury tone for property 1, English professional for property 2
         if i == 1:
-            html_content = await html_generator.generate_html(property_data, language="es", tone="luxury")
+            html_content = await html_generator.generate_html(property_data=property_data, language="es", tone="luxury")
         else:
-            html_content = await html_generator.generate_html(property_data, language="en", tone="professional")
+            html_content = await html_generator.generate_html(
+                property_data=property_data, language="en", tone="professional"
+            )
 
         html_filename = f"data/property_{i}_listing.html"
-        with open(html_filename, "w") as f:
+        with open(file=html_filename, mode="w") as f:
             f.write(html_content)
 
         logging.info(f"Generated {json_filename} and {html_filename}")
@@ -81,4 +83,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(main=main())

@@ -1,6 +1,7 @@
 from autogen_agentchat.agents import AssistantAgent
 from autogen_ext.models.ollama import OllamaChatCompletionClient
 from typing import Dict, Any
+from config.options import TONE_OPTIONS
 
 
 class ToneEvaluatorAgent(AssistantAgent):
@@ -36,20 +37,20 @@ class ToneEvaluatorAgent(AssistantAgent):
         Returns:
             Standardized evaluation results dictionary
         """
-        prompt = self.build_tone_prompt(content, expected_tone)
+        prompt = self.build_tone_prompt(content=content, expected_tone=expected_tone)
         response = await self.run(task=prompt)
 
         # Parse response (expecting JSON format)
         try:
             import json
 
-            result = json.loads(response.messages[-1].content.strip())
+            result = json.loads(s=response.messages[-1].content.strip())
             score = float(result.get("score", 0.5))
             feedback = result.get("feedback", "No feedback available")
         except (json.JSONDecodeError, ValueError, KeyError):
             # Fallback parsing
             response_text = response.messages[-1].content.strip()
-            score = self._extract_score_from_text(response_text)
+            score = self._extract_score_from_text(text=response_text)
             feedback = "Tone evaluation completed"
 
         return {
@@ -64,17 +65,9 @@ class ToneEvaluatorAgent(AssistantAgent):
 
     def build_tone_prompt(self, content: str, expected_tone: str = "professional") -> str:
         """Build prompt for tone evaluation."""
-        tone_descriptions = {
-            "professional": "Professional, formal, and trustworthy",
-            "friendly": "Warm, approachable, and conversational",
-            "luxury": "Sophisticated, exclusive, and premium",
-            "investor-focused": "Data-driven, analytical, and ROI-oriented",
-            "family-oriented": "Welcoming, safe, and community-focused",
-            "modern": "Contemporary, trendy, and innovative",
-            "classic": "Timeless, elegant, and traditional",
-        }
-
-        tone_description = tone_descriptions.get(expected_tone, f"Tone matching '{expected_tone}' style")
+        tone_description = TONE_OPTIONS.get(expected_tone, {}).get(
+            "description", f"Tone matching '{expected_tone}' style"
+        )
 
         return f"""Evaluate the tone and style of this real estate content.
 

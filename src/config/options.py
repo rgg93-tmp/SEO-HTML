@@ -5,20 +5,36 @@ Configuration settings for language and tone options.
 # Language options with their codes and full names
 LANGUAGE_OPTIONS = {
     "en": {"name": "English", "code": "en", "spell_check_code": "en"},
-    "es": {"name": "Español", "code": "es", "spell_check_code": "es"},
-    "pt": {"name": "Português", "code": "pt", "spell_check_code": "pt"},
+    "es": {"name": "Spanish", "code": "es", "spell_check_code": "es"},
+    "pt": {"name": "Portuguese", "code": "pt", "spell_check_code": "pt"},
 }
 
 # Tone options with descriptions
 TONE_OPTIONS = {
-    "professional": {"name": "Professional", "description": "Formal, trustworthy, and business-oriented"},
-    "friendly": {"name": "Friendly", "description": "Warm, approachable, and conversational"},
-    "luxury": {"name": "Luxury", "description": "Sophisticated, exclusive, and premium"},
-    "investor-focused": {"name": "Investor-Focused", "description": "Data-driven, analytical, and ROI-oriented"},
-    "family-oriented": {"name": "Family-Oriented", "description": "Welcoming, safe, and community-focused"},
-    "modern": {"name": "Modern", "description": "Contemporary, trendy, and innovative"},
-    "classic": {"name": "Classic", "description": "Timeless, elegant, and traditional"},
-    "casual": {"name": "Casual", "description": "Relaxed, informal, and easy-going"},
+    "luxury": {
+        "name": "Luxury",
+        "description": "Sophisticated, exclusive, and premium. Highlight high-end finishes, amenities, and prestige.",
+    },
+    "investor-focused": {
+        "name": "Investor-Focused",
+        "description": "Data-driven, analytical, and ROI-oriented. Emphasize investment potential, rental yield, and market growth.",
+    },
+    "family-oriented": {
+        "name": "Family-Oriented",
+        "description": "Welcoming, safe, and community-focused. Highlight schools, parks, and family-friendly features.",
+    },
+    "modern": {
+        "name": "Modern",
+        "description": "Contemporary, trendy, and innovative. Emphasize new technology, design, and urban lifestyle.",
+    },
+    "classic": {
+        "name": "Classic",
+        "description": "Timeless, elegant, and traditional. Highlight architectural details, heritage, and enduring value.",
+    },
+    "youthful": {
+        "name": "Youthful",
+        "description": "Joyful, vibrant, and affordable. Highlight fun activities, social life, and low price for young buyers.",
+    },
 }
 
 

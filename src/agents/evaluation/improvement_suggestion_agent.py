@@ -33,7 +33,7 @@ class ImprovementSuggestionAgent(AssistantAgent):
         self,
         evaluation_results: Dict[str, Any],
         property_data: Dict[str, Any],
-        language: str = "en",
+        language_name: str = "English",
         tone: str = "professional",
     ) -> Dict[str, Dict[str, Any]]:
         """
@@ -50,24 +50,25 @@ class ImprovementSuggestionAgent(AssistantAgent):
         """
 
         # Build comprehensive improvement prompt
-        improvement_prompt = self._build_improvement_prompt(evaluation_results, property_data, language, tone)
+        improvement_prompt = self._build_improvement_prompt(
+            evaluation_results=evaluation_results, property_data=property_data, language_name=language_name, tone=tone
+        )
 
         # Get AI-generated suggestions
         response = await self.run(task=improvement_prompt)
         suggestions_text = response.messages[-1].content.strip()
 
         # Parse and structure the suggestions
-        structured_suggestions = self._parse_suggestions_response(suggestions_text, evaluation_results)
+        structured_suggestions = self._parse_suggestions_response(
+            suggestions_text=suggestions_text, evaluation_results=evaluation_results
+        )
 
         return structured_suggestions
 
     def _build_improvement_prompt(
-        self, evaluation_results: Dict[str, Any], property_data: Dict[str, Any], language: str, tone: str
+        self, evaluation_results: Dict[str, Any], property_data: Dict[str, Any], language_name: str, tone: str
     ) -> str:
         """Build comprehensive prompt for improvement suggestions."""
-
-        language_names = {"en": "English", "es": "Spanish", "pt": "Portuguese"}
-        language_name = language_names.get(language, "English")
 
         # Extract key information
         overall_score = evaluation_results.get("overall_score", 0)
@@ -77,14 +78,14 @@ class ImprovementSuggestionAgent(AssistantAgent):
 
         # Format component scores
         scores_text = "\n".join(
-            [f"  • {key.replace('_', ' ').title()}: {score:.2f}" for key, score in component_scores.items()]
+            [f"  • {key.replace(old='_', new=' ').title()}: {score:.2f}" for key, score in component_scores.items()]
         )
 
         # Format current content
         current_content = ""
         for section, content in content_sections.items():
             if content and content.strip():
-                current_content += f"\n{section.replace('_', ' ').title()}: {content[:200]}...\n"
+                current_content += f"\n{section.replace(old='_', new=' ').title()}: {content[:200]}...\n"
 
         # Format issues
         issues_text = "\n".join([f"  - {issue}" for issue in all_issues[:10]])
@@ -92,7 +93,7 @@ class ImprovementSuggestionAgent(AssistantAgent):
         return f"""Analyze this real estate content evaluation and provide specific improvement suggestions for each section.
 
 PROPERTY DATA:
-{json.dumps(property_data, indent=2)}
+{json.dumps(obj=property_data, indent=2)}
 
 TARGET LANGUAGE: {language_name}
 TARGET TONE: {tone}
@@ -149,7 +150,7 @@ Keep suggestions specific and actionable.
         current_section = None
         current_suggestion = {}
 
-        lines = suggestions_text.split("\n")
+        lines = suggestions_text.split(sep="\n")
 
         for line in lines:
             line = line.strip()
@@ -166,7 +167,9 @@ Keep suggestions specific and actionable.
                     "suggestion": "",
                     "reason": "",
                     "impact": "",
-                    "component_scores": self._get_section_scores(current_section, evaluation_results),
+                    "component_scores": self._get_section_scores(
+                        section=current_section, evaluation_results=evaluation_results
+                    ),
                 }
 
             elif line.startswith("Priority:") and current_section:
@@ -186,7 +189,7 @@ Keep suggestions specific and actionable.
             suggestions[current_section] = current_suggestion
 
         # Add fallback suggestions for critical issues
-        suggestions = self._add_fallback_suggestions(suggestions, evaluation_results)
+        suggestions = self._add_fallback_suggestions(suggestions=suggestions, evaluation_results=evaluation_results)
 
         return suggestions
 
@@ -194,23 +197,8 @@ Keep suggestions specific and actionable.
         """Get relevant scores for a specific section."""
         component_scores = evaluation_results.get("component_scores", {})
 
-        # Map sections to relevant score components
-        section_score_mapping = {
-            "title": ["seo", "language_accuracy"],
-            "meta_description": ["seo", "language_accuracy"],
-            "h1": ["seo", "readability"],
-            "description": ["readability", "fact_accuracy", "tone"],
-            "key_features": ["fact_accuracy", "readability"],
-            "neighborhood": ["fact_accuracy", "tone"],
-            "call_to_action": ["tone", "readability"],
-        }
-
-        relevant_scores = {}
-        for score_type in section_score_mapping.get(section, []):
-            if score_type in component_scores:
-                relevant_scores[score_type] = component_scores[score_type]
-
-        return relevant_scores
+        # Ahora todas las secciones consideran todos los componentes
+        return dict(component_scores)
 
     def _add_fallback_suggestions(
         self, suggestions: Dict[str, Dict[str, Any]], evaluation_results: Dict[str, Any]
@@ -226,7 +214,7 @@ Keep suggestions specific and actionable.
         for component, threshold in critical_thresholds.items():
             score = component_scores.get(component, 1.0)
             if score < threshold:
-                self._add_critical_suggestion(suggestions, component, score)
+                self._add_critical_suggestion(suggestions=suggestions, component=component, score=score)
 
         return suggestions
 

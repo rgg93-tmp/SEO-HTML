@@ -16,7 +16,7 @@ ENVIRONMENT = os.getenv("ENVIRONMENT", "Local")
 app = FastAPI()
 
 #  Mounts sub-applications for modular routing.
-app = mount_realestate_app(app)
+app = mount_realestate_app(app=app)
 
 # Log a message using the custom logger
 logging.info("FastAPI app started.")
@@ -28,7 +28,7 @@ if __name__ == "__main__":
 
     logging.info("Starting Real Estate app with Uvicorn...")
     uvicorn.run(
-        app,
+        app=app,
         host="0.0.0.0",
         port=5000,
         log_level="info",

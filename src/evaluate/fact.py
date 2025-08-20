@@ -25,7 +25,7 @@ class FactEvaluator(BaseEvaluator):
         # Extract text content from HTML
         import re
 
-        text = re.sub(r"<[^>]+>", "", html_content)
+        text = re.sub(pattern=r"<[^>]+>", repl="", string=html_content)
         text = " ".join(text.split())  # Clean whitespace
 
         if not property_data:
@@ -38,6 +38,6 @@ class FactEvaluator(BaseEvaluator):
             }
 
         # Run async evaluation using the agent
-        result = await self.fact_checker_agent.evaluate(text, property_data)
+        result = await self.fact_checker_agent.evaluate(content=text, property_data=property_data)
 
         return result

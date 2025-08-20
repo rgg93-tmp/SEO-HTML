@@ -1,6 +1,7 @@
 from autogen_agentchat.agents import AssistantAgent
 from autogen_ext.models.ollama import OllamaChatCompletionClient
 from typing import Dict, Any
+from config.options import TONE_OPTIONS
 
 
 class CallToActionAgent(AssistantAgent):
@@ -24,8 +25,10 @@ class CallToActionAgent(AssistantAgent):
         )
 
     def build_user_prompt(self, property_data, language="English", tone="professional"):
+        tone_description = TONE_OPTIONS.get(tone, {}).get("description", "")
         return f"""Respond exclusively in {language}. Do not use any other language.
 Generate a compelling call to action for the following property in {language} with a {tone} tone.
+Tone details: {tone_description}
 Only output the call to action text. Do not include any extra content, questions, or options.
 
 Language: {language}
@@ -34,14 +37,21 @@ Property data: {property_data}
 """
 
     def build_refinement_prompt(
-        self, property_data: Dict[str, Any], current_cta: str, suggestion: str, language="English", tone="professional"
+        self,
+        property_data: Dict[str, Any],
+        current_content: str,
+        suggestion: str,
+        language="English",
+        tone="professional",
     ) -> str:
+        tone_description = TONE_OPTIONS.get(tone, {}).get("description", "")
         return f"""
 Respond exclusively in {language}. Do not use any other language.
 Refine this call to action based on the suggestion provided. Keep it compelling and action-oriented.
-Write in {language} with a {tone} tone. Only output the improved call to action string.
+Write in {language} with a {tone} tone. Tone details: {tone_description}
+Only output the improved call to action string.
 
-Current call to action: {current_cta}
+Current call to action: {current_content}
 
 Property data: {property_data}
 
@@ -53,14 +63,25 @@ Provide only the refined call to action with no explanations or extra content.
 
     async def generate_initial(self, property_data: Dict[str, Any], language="English", tone="professional") -> str:
         """Generate initial call to action draft."""
-        prompt = self.build_user_prompt(property_data, language, tone)
+        prompt = self.build_user_prompt(property_data=property_data, language=language, tone=tone)
         response = await self.run(task=prompt)
         return response.messages[-1].content.strip()
 
     async def refine(
-        self, property_data: Dict[str, Any], current_cta: str, suggestion: str, language="English", tone="professional"
+        self,
+        property_data: Dict[str, Any],
+        current_content: str,
+        suggestion: str,
+        language="English",
+        tone="professional",
     ) -> str:
         """Refine existing call to action based on a suggestion."""
-        prompt = self.build_refinement_prompt(property_data, current_cta, suggestion, language, tone)
+        prompt = self.build_refinement_prompt(
+            property_data=property_data,
+            current_content=current_content,
+            suggestion=suggestion,
+            language=language,
+            tone=tone,
+        )
         response = await self.run(task=prompt)
         return response.messages[-1].content.strip()

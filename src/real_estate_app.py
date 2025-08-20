@@ -36,7 +36,7 @@ async def generate_html_content(
         str: Generated HTML content
     """
     try:
-        data = json.loads(property_data)
+        data = json.loads(s=property_data)
 
         # Remove language and tone from property data if they exist
         if "language" in data:
@@ -48,7 +48,7 @@ async def generate_html_content(
         html_generator = HTMLGenerator()
 
         # Generate HTML content with language and tone parameters
-        html_content = await html_generator.generate_html(data, language=language, tone=tone)
+        html_content = await html_generator.generate_html(property_data=data, language=language, tone=tone)
 
         return html_content
 
@@ -94,7 +94,7 @@ with gr.Blocks(
                 label="Property Data",
                 placeholder="Enter property data in JSON format...",
                 lines=8,
-                value=json.dumps(sample_data, indent=2),
+                value=json.dumps(obj=sample_data, indent=2),
             )
 
             # Language and Tone selection
@@ -145,7 +145,7 @@ def mount_realestate_app(app: FastAPI) -> FastAPI:
     app.add_api_route("/realestate/favicon.ico", favicon, methods=["GET"])
 
     # Mount the Gradio app
-    app = gr.mount_gradio_app(app, re_app, path="/realestate")
+    app = gr.mount_gradio_app(app=app, gradio_app=re_app, path="/realestate")
 
     logging.info("Gradio Real Estate app mounted.")
 

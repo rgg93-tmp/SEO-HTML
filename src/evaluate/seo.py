@@ -27,72 +27,27 @@ class SeoEvaluator(BaseEvaluator):
     async def evaluate(self, html_content: str, **kwargs) -> Dict[str, Any]:
         """
         Evaluate SEO aspects of HTML content using seokar.
-
-        Args:
-            html_content: HTML content to analyze
-            **kwargs: Additional parameters
-
-        Returns:
-            Standardized evaluation results dictionary
+        Returns score and findings from the report, without exception handling.
         """
-        try:
-            logging.disable(logging.ERROR)
-            analyzer = Seokar(html_content=html_content)
-            report = analyzer.analyze()
-            logging.disable(logging.NOTSET)
+        logging.disable(level=logging.ERROR)
+        analyzer = Seokar(html_content=html_content)
+        report = analyzer.analyze()
+        logging.disable(level=logging.NOTSET)
 
-            score_value = report.get("score", 0.5)
-            if isinstance(score_value, str):
-                try:
-                    score = float(score_value) / 100.0
-                except ValueError:
-                    score = 0.5
-            else:
-                score = float(score_value) if score_value is not None else 0.5
+        score_value = report["seo_health"]["score"]
+        if isinstance(score_value, str):
+            try:
+                score = float(score_value) / 100.0
+            except ValueError:
+                score = 0.5
+        else:
+            score = float(score_value) if score_value is not None else 0.5
 
-            findings = []
-
-            # Process structured content issues
-            content_issues = _extract_content_issues(report)
-            for issue in content_issues:
-                severity = issue.get("severity", "info").lower()
-                findings.append(
-                    {
-                        "component": f"SEO {issue.get('element_type', 'Issue')}",
-                        "message": issue.get("message", ""),
-                        "severity": severity,
-                    }
-                )
-
-            # Process unstructured report data as a fallback
-            for key, severity, component_name in [
-                ("warnings", "warning", "SEO Warning"),
-                ("errors", "error", "SEO Error"),
-                ("suggestions", "info", "SEO Suggestion"),
-            ]:
-                for item in report.get(key, []):
-                    if isinstance(item, str):
-                        findings.append({"component": component_name, "message": item, "severity": severity})
-
-            # Remove duplicates
-            unique_findings = [dict(t) for t in {tuple(d.items()) for d in findings}]
-
-            return {
-                "evaluator": "SeoEvaluator",
-                "score": score,
-                "passed": score >= 0.7,
-                "summary": f"SEO analysis completed with score: {score:.2f}",
-                "findings": unique_findings,
-            }
-
-        except Exception as e:
-            # Fallback evaluation if seokar fails
-            return {
-                "evaluator": "SeoEvaluator",
-                "score": 0.5,
-                "passed": False,
-                "summary": f"SEO analysis failed: {str(e)}",
-                "findings": [
-                    {"component": "SEO Analysis", "message": f"SEO analysis failed: {str(e)}", "severity": "error"}
-                ],
-            }
+        findings = _extract_content_issues(report_data=report)
+        return {
+            "evaluator": "SeoEvaluator",
+            "score": score,
+            "passed": score >= 0.7,
+            "summary": f"SEO analysis completed with score: {score:.2f}",
+            "findings": findings,
+        }
