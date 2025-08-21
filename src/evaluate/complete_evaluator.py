@@ -2,14 +2,12 @@ from typing import Dict, Any, List
 import re
 from .seo import SeoEvaluator
 from .language import (
-    LanguageMatchEvaluator,
     LanguageMatchEvaluator2,
     ToneMatchEvaluator,
     SpellingEvaluator,
     ReadabilityEvaluator,
 )
 from .fact import FactEvaluator
-from bs4 import BeautifulSoup
 
 
 class CompleteEvaluator:
@@ -50,33 +48,33 @@ class CompleteEvaluator:
             text=text, language_code=language, target_language=language_name
         )
         tone_results = await self.tone_match.evaluate(text=text, target_tone=tone)
-        spelling_results = self.spelling.evaluate(text=text, language_code=language)
+        # spelling_results = self.spelling.evaluate(text=text, language_code=language)
         readability_results = self.readability.evaluate(text=text, language_code=language)
-        fact_results = await self.fact_evaluator.evaluate(html_content=html_content, property_data=property_data)
+        # fact_results = await self.fact_evaluator.evaluate(html_content=html_content, property_data=property_data)
 
         findings = (
             language_results.get("findings", [])
             + tone_results.get("findings", [])
-            + spelling_results.get("findings", [])
+            # + spelling_results.get("findings", [])
             + readability_results.get("findings", [])
-            + fact_results.get("findings", [])
+            # + fact_results.get("findings", []),
             + seo_results.get("findings", [])
         )
         needs_improvement = not (
             language_results.get("passed", True)
             and tone_results.get("passed", True)
-            and spelling_results.get("passed", True)
+            # and spelling_results.get("passed", True)
             and readability_results.get("passed", True)
-            and fact_results.get("passed", True)
+            # and fact_results.get("passed", True)
             and seo_results.get("passed", True)
         )
         evaluation = {
             "seo": seo_results,
             "language_match": language_results,
             "tone_match": tone_results,
-            "spelling": spelling_results,
+            # "spelling": spelling_results,
             "readability": readability_results,
-            "facts": fact_results,
+            # "facts": fact_results,
             "all_findings": findings,
             "needs_improvement": needs_improvement,
         }

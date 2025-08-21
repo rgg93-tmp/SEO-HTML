@@ -10,7 +10,7 @@ class ToneEvaluatorAgent(AssistantAgent):
     def __init__(
         self,
         name="tone_evaluator_agent",
-        model="gemma3:1b-it-qat",
+        model="gemma3n:e2b",
         model_info={
             "vision": False,
             "function_calling": False,

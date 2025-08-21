@@ -11,7 +11,7 @@ class FactCheckerAgent(AssistantAgent):
     def __init__(
         self,
         name="fact_checker_agent",
-        model="gemma3:1b-it-qat",
+        model="gemma3n:e2b",
         model_info={
             "vision": False,
             "function_calling": False,
@@ -61,8 +61,7 @@ class FactCheckerAgent(AssistantAgent):
         return {
             "evaluator": "FactCheckerAgent",
             "score": score,
-            "passed": score >= 0.7,
-            "summary": f"Fact checking completed with score: {score:.2f}. {feedback}",
+            "passed": score >= 0.90,
             "findings": findings,
         }
 

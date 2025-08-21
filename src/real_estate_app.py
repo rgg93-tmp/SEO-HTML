@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse
 from typing import Tuple
 
 from core.html_generator import HTMLGenerator
-from config.options import LANGUAGE_OPTIONS, TONE_OPTIONS
+from config.options import LANGUAGE_OPTIONS, TONE_OPTIONS, MODEL_OPTIONS
 
 
 async def favicon() -> FileResponse:
@@ -23,6 +23,8 @@ async def generate_html_content(
     property_data: str,
     language: str = "en",
     tone: str = "professional",
+    model: str = "gemma3n:e2b",
+    max_iterations: int = 3,
 ) -> str:
     """
     Generate HTML content for a real estate listing based on property data.
@@ -31,6 +33,8 @@ async def generate_html_content(
         property_data: JSON string containing property information
         language: Language for content generation (en, es, pt)
         tone: Tone for content generation (professional, friendly, luxury, etc.)
+        model: Model to use for content generation
+        max_iterations: Maximum number of refinement iterations
 
     Returns:
         str: Generated HTML content
@@ -44,8 +48,8 @@ async def generate_html_content(
         if "tone" in data:
             del data["tone"]
 
-        # Create HTML generator
-        html_generator = HTMLGenerator()
+        # Create HTML generator with specified model and max_iterations
+        html_generator = HTMLGenerator(model=model, max_iterations=max_iterations)
 
         # Generate HTML content with language and tone parameters
         html_content = await html_generator.generate_html(property_data=data, language=language, tone=tone)
@@ -107,14 +111,27 @@ with gr.Blocks(
                 )
                 tone_dropdown = gr.Dropdown(
                     choices=list(TONE_OPTIONS.keys()),
-                    value="professional",
+                    value="family-oriented",
                     label="Tone",
                     info="Select the tone/style for the content",
                 )
 
             # Settings panel (currently empty but could be expanded)
             with gr.Accordion(label="Advanced Settings", open=False):
-                gr.Markdown("*No additional settings currently available.*")
+                model_dropdown = gr.Dropdown(
+                    choices=list(MODEL_OPTIONS.keys()),
+                    value="gemma3n:e2b",
+                    label="Model",
+                    info="Select the AI model for content generation",
+                )
+                max_iterations_slider = gr.Slider(
+                    minimum=1,
+                    maximum=10,
+                    value=3,
+                    step=1,
+                    label="Max Iterations",
+                    info="Maximum number of refinement iterations (higher values = better quality but slower)",
+                )
 
             run_btn = gr.Button("Generate HTML Content", variant="primary")
 
@@ -124,7 +141,7 @@ with gr.Blocks(
 
     run_btn.click(
         fn=generate_html_content,
-        inputs=[property_input, language_dropdown, tone_dropdown],
+        inputs=[property_input, language_dropdown, tone_dropdown, model_dropdown, max_iterations_slider],
         outputs=[output_html],
     )
 
@@ -145,7 +162,7 @@ def mount_realestate_app(app: FastAPI) -> FastAPI:
     app.add_api_route("/realestate/favicon.ico", favicon, methods=["GET"])
 
     # Mount the Gradio app
-    app = gr.mount_gradio_app(app=app, gradio_app=re_app, path="/realestate")
+    app = gr.mount_gradio_app(app, re_app, path="/realestate")
 
     logging.info("Gradio Real Estate app mounted.")
 

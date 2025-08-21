@@ -2,106 +2,21 @@ from autogen_agentchat.agents import AssistantAgent
 from autogen_ext.models.ollama import OllamaChatCompletionClient
 from typing import Dict, Any, List
 import json
+import re
+from config.options import LANGUAGE_OPTIONS
 
-
-class ImprovementSuggestionAgent(AssistantAgent):
-    """
-    Agent that takes evaluation results and provides specific improvement suggestions
-    for each content section of the HTML.
-    """
-
-    def __init__(
-        self,
-        name="improvement_suggestion_agent",
-        model="gemma3:1b-it-qat",
-        model_info={
-            "vision": False,
-            "function_calling": False,
-            "json_output": False,
-            "family": "unknown",
-            "structured_output": True,
-        },
-    ):
-        model_client = OllamaChatCompletionClient(model=model, model_info=model_info)
-        super().__init__(
-            name=name,
-            model_client=model_client,
-            system_message="You are a content improvement expert for real estate listings. Given evaluation results, provide specific, actionable improvement suggestions for each content section. Focus on the most impactful changes that will improve SEO, user experience, and conversion rates.",
-        )
-
-    async def generate_section_improvements(
-        self,
-        evaluation_results: Dict[str, Any],
-        property_data: Dict[str, Any],
-        language_name: str = "English",
-        tone: str = "professional",
-    ) -> Dict[str, Dict[str, Any]]:
-        """
-        Generate specific improvement suggestions for each HTML content section.
-
-        Args:
-            evaluation_results: Results from CompleteEvaluator
-            property_data: Property data for context
-            language: Target language
-            tone: Target tone
-
-        Returns:
-            Dict with section-specific improvements and priorities
-        """
-
-        # Build comprehensive improvement prompt
-        improvement_prompt = self._build_improvement_prompt(
-            evaluation_results=evaluation_results, property_data=property_data, language_name=language_name, tone=tone
-        )
-
-        # Get AI-generated suggestions
-        response = await self.run(task=improvement_prompt)
-        suggestions_text = response.messages[-1].content.strip()
-
-        # Parse and structure the suggestions
-        structured_suggestions = self._parse_suggestions_response(
-            suggestions_text=suggestions_text, evaluation_results=evaluation_results
-        )
-
-        return structured_suggestions
-
-    def _build_improvement_prompt(
-        self, evaluation_results: Dict[str, Any], property_data: Dict[str, Any], language_name: str, tone: str
-    ) -> str:
-        """Build comprehensive prompt for improvement suggestions."""
-
-        # Extract key information
-        overall_score = evaluation_results.get("overall_score", 0)
-        component_scores = evaluation_results.get("component_scores", {})
-        content_sections = evaluation_results.get("content_sections", {})
-        all_issues = evaluation_results.get("all_issues", [])
-
-        # Format component scores
-        scores_text = "\n".join(
-            [f"  • {key.replace(old='_', new=' ').title()}: {score:.2f}" for key, score in component_scores.items()]
-        )
-
-        # Format current content
-        current_content = ""
-        for section, content in content_sections.items():
-            if content and content.strip():
-                current_content += f"\n{section.replace(old='_', new=' ').title()}: {content[:200]}...\n"
-
-        # Format issues
-        issues_text = "\n".join([f"  - {issue}" for issue in all_issues[:10]])
-
-        return f"""Analyze this real estate content evaluation and provide specific improvement suggestions for each section.
+# Language-specific prompts for improvement suggestions
+IMPROVEMENT_PROMPTS = {
+    "en": {
+        "prompt": """Respond exclusively in {language_name}. Analyze the evaluation findings and extract specific improvement instructions for each content section. Do NOT generate new content, only provide clear instructions on how to fix the identified problems.
 
 PROPERTY DATA:
-{json.dumps(obj=property_data, indent=2)}
+{property_data}
 
 TARGET LANGUAGE: {language_name}
 TARGET TONE: {tone}
 
 EVALUATION RESULTS:
-Overall Score: {overall_score:.2f}
-
-Component Scores:
 {scores_text}
 
 CURRENT CONTENT:
@@ -110,41 +25,268 @@ CURRENT CONTENT:
 IDENTIFIED ISSUES:
 {issues_text}
 
-TASK: Provide specific improvement suggestions for each content section. For each section that needs improvement, suggest:
+TASK: Parse the evaluation findings and create specific instructions for fixing each identified problem. These instructions will be used by another LLM to correct the content. Base your instructions ONLY on the evaluation findings provided above.
 
-1. TITLE improvements (if score < 0.8)
-2. META DESCRIPTION improvements (if score < 0.8)  
-3. H1 improvements (if score < 0.8)
-4. DESCRIPTION improvements (if score < 0.8)
-5. KEY FEATURES improvements (if score < 0.8)
-6. NEIGHBORHOOD improvements (if score < 0.8)
-7. CALL TO ACTION improvements (if score < 0.8)
+IMPORTANT: For each section, you must include:
+- "None" if there are NO problems identified for that specific section
+- A detailed description with ALL problems and solutions found for that section ONLY
 
-For each section, provide:
-- Priority: HIGH/MEDIUM/LOW
-- Specific suggestion: What exactly to change
-- Reason: Why this improvement is needed
-- Expected impact: SEO/Engagement/Conversion/Accuracy
+You MUST respond with a valid JSON object in this EXACT format:
+{{
+  "title": "None" OR "Problem: [state the specific issue found for TITLE]. Fix: [provide clear instruction on how to resolve it]",
+  "meta_description": "None" OR "Problem: [state the specific issue found for META DESCRIPTION]. Fix: [provide clear instruction on how to resolve it]",
+  "h1": "None" OR "Problem: [state the specific issue found for H1]. Fix: [provide clear instruction on how to resolve it]",
+  "description": "None" OR "Problem: [state the specific issue found for DESCRIPTION]. Fix: [provide clear instruction on how to resolve it]",
+  "key_features": "None" OR "Problem: [state the specific issue found for KEY FEATURES]. Fix: [provide clear instruction on how to resolve it]",
+  "neighborhood": "None" OR "Problem: [state the specific issue found for NEIGHBORHOOD]. Fix: [provide clear instruction on how to resolve it]",
+  "call_to_action": "None" OR "Problem: [state the specific issue found for CALL TO ACTION]. Fix: [provide clear instruction on how to resolve it]"
+}}
 
-Format your response as:
+CRITICAL: Only include problems that specifically belong to each section. Do not mix problems from different sections. Use "None" for sections with no identified issues.""",
+    },
+    "es": {
+        "prompt": """Responde exclusivamente en {language_name}. Analiza los hallazgos de evaluación y extrae instrucciones específicas de mejora para cada sección de contenido. NO generes contenido nuevo, solo proporciona instrucciones claras sobre cómo solucionar los problemas identificados.
 
-SECTION: [section_name]
-Priority: [HIGH/MEDIUM/LOW]
-Suggestion: [specific improvement]
-Reason: [why needed]
-Impact: [expected benefit]
+DATOS DE LA PROPIEDAD:
+{property_data}
 
----
+IDIOMA OBJETIVO: {language_name}
+TONO OBJETIVO: {tone}
 
-Only suggest improvements for sections that actually need them based on the evaluation results.
-Focus on the most impactful changes first.
-Keep suggestions specific and actionable.
-"""
+RESULTADOS DE EVALUACIÓN:
+{scores_text}
+
+CONTENIDO ACTUAL:
+{current_content}
+
+PROBLEMAS IDENTIFICADOS:
+{issues_text}
+
+TAREA: Parsea los hallazgos de evaluación y crea instrucciones específicas para corregir cada problema identificado. Estas instrucciones serán utilizadas por otro LLM para corregir el contenido. Basa tus instrucciones ÚNICAMENTE en los hallazgos de evaluación proporcionados arriba.
+
+IMPORTANTE: Para cada sección, debes incluir:
+- "None" si NO hay problemas identificados para esa sección específica
+- Una descripción detallada con TODOS los problemas y soluciones encontrados para esa sección ÚNICAMENTE
+
+DEBES responder con un objeto JSON válido en este formato EXACTO:
+{{
+  "title": "None" O "Problema: [indica el problema específico encontrado para TÍTULO]. Solución: [proporciona instrucción clara sobre cómo resolverlo]",
+  "meta_description": "None" O "Problema: [indica el problema específico encontrado para META DESCRIPCIÓN]. Solución: [proporciona instrucción clara sobre cómo resolverlo]",
+  "h1": "None" O "Problema: [indica el problema específico encontrado para H1]. Solución: [proporciona instrucción clara sobre cómo resolverlo]",
+  "description": "None" O "Problema: [indica el problema específico encontrado para DESCRIPCIÓN]. Solución: [proporciona instrucción clara sobre cómo resolverlo]",
+  "key_features": "None" O "Problema: [indica el problema específico encontrado para CARACTERÍSTICAS CLAVE]. Solución: [proporciona instrucción clara sobre cómo resolverlo]",
+  "neighborhood": "None" O "Problema: [indica el problema específico encontrado para VECINDARIO]. Solución: [proporciona instrucción clara sobre cómo resolverlo]",
+  "call_to_action": "None" O "Problema: [indica el problema específico encontrado para LLAMADA A LA ACCIÓN]. Solución: [proporciona instrucción clara sobre cómo resolverlo]"
+}}
+
+CRÍTICO: Solo incluye problemas que específicamente pertenezcan a cada sección. No mezcles problemas de diferentes secciones. Usa "None" para secciones sin problemas identificados.""",
+    },
+    "pt": {
+        "prompt": """Responda exclusivamente em {language_name}. Analise os achados de avaliação e extraia instruções específicas de melhoria para cada seção de conteúdo. NÃO gere conteúdo novo, apenas forneça instruções claras sobre como resolver os problemas identificados.
+
+DADOS DA PROPRIEDADE:
+{property_data}
+
+IDIOMA ALVO: {language_name}
+TOM ALVO: {tone}
+
+RESULTADOS DA AVALIAÇÃO:
+{scores_text}
+
+CONTEÚDO ATUAL:
+{current_content}
+
+PROBLEMAS IDENTIFICADOS:
+{issues_text}
+
+TAREFA: Parse os achados de avaliação e crie instruções específicas para corrigir cada problema identificado. Essas instruções serão usadas por outro LLM para corrigir o conteúdo. Base suas instruções APENAS nos achados de avaliação fornecidos acima.
+
+IMPORTANTE: Para cada seção, você deve incluir:
+- "None" se NÃO há problemas identificados para essa seção específica
+- Uma descrição detalhada com TODOS os problemas e soluções encontrados para essa seção APENAS
+
+Você DEVE responder com um objeto JSON válido neste formato EXATO:
+{{
+  "title": "None" OU "Problema: [indique o problema específico encontrado para TÍTULO]. Solução: [forneça instrução clara sobre como resolvê-lo]",
+  "meta_description": "None" OU "Problema: [indique o problema específico encontrado para META DESCRIÇÃO]. Solução: [forneça instrução clara sobre como resolvê-lo]",
+  "h1": "None" OU "Problema: [indique o problema específico encontrado para H1]. Solução: [forneça instrução clara sobre como resolvê-lo]",
+  "description": "None" OU "Problema: [indique o problema específico encontrado para DESCRIÇÃO]. Solução: [forneça instrução clara sobre como resolvê-lo]",
+  "key_features": "None" OU "Problema: [indique o problema específico encontrado para CARACTERÍSTICAS CHAVE]. Solução: [forneça instrução clara sobre como resolvê-lo]",
+  "neighborhood": "None" OU "Problema: [indique o problema específico encontrado para VIZINHANÇA]. Solução: [forneça instrução clara sobre como resolvê-lo]",
+  "call_to_action": "None" OU "Problema: [indique o problema específico encontrado para CHAMADA PARA AÇÃO]. Solução: [forneça instrução clara sobre como resolvê-lo]"
+}}
+
+CRÍTICO: Inclua apenas problemas que especificamente pertencem a cada seção. Não misture problemas de diferentes seções. Use "None" para seções sem problemas identificados.""",
+    },
+}
+
+
+class ImprovementSuggestionAgent(AssistantAgent):
+    """
+    Agent that takes evaluation results and provides specific improvement instructions
+    for each content section of the HTML. The instructions are designed to be used
+    by another LLM to fix the content issues.
+    """
+
+    def __init__(
+        self,
+        name="improvement_suggestion_agent",
+        model="gemma3n:e2b",
+        model_info={
+            "vision": False,
+            "function_calling": False,
+            "json_output": True,  # Enable JSON output
+            "family": "unknown",
+            "structured_output": True,
+        },
+    ):
+        model_client = OllamaChatCompletionClient(model=model, model_info=model_info)
+        super().__init__(
+            name=name,
+            model_client=model_client,
+            system_message="You are a multilingual content analysis expert for real estate listings. Given evaluation results, extract and parse the specific problems found and provide clear fix instructions for each content section based solely on evaluation findings. Always respond in the target language specified. Focus on addressing only the issues identified in the evaluation results. Do not generate new content, only provide instructions.",
+        )
+
+    async def generate_section_improvements(
+        self,
+        current_content: str,
+        evaluation_results: Dict[str, Any],
+        property_data: Dict[str, Any],
+        language: str = "en",
+        tone: str = "professional",
+    ) -> Dict[str, Dict[str, Any]]:
+        """
+        Generate specific improvement instructions for each HTML content section.
+
+        Args:
+            current_content: Current HTML content
+            evaluation_results: Results from CompleteEvaluator
+            property_data: Property data for context
+            language: Target language code (en, es, pt)
+            tone: Target tone
+
+        Returns:
+            Dict with section-specific fix instructions
+        """
+
+        # Build comprehensive improvement prompt
+        improvement_prompt = self._build_improvement_prompt(
+            current_content=current_content,
+            evaluation_results=evaluation_results,
+            property_data=property_data,
+            language=language,
+            tone=tone,
+        )
+
+        # Get AI-generated instructions
+        response = await self.run(task=improvement_prompt)
+        suggestions_text = response.messages[-1].content.strip()
+
+        # Parse and structure the instructions
+        structured_suggestions = self._parse_suggestions_response(
+            suggestions_text=suggestions_text, evaluation_results=evaluation_results
+        )
+
+        return structured_suggestions
+
+    def _build_improvement_prompt(
+        self,
+        current_content: str,
+        evaluation_results: Dict[str, Any],
+        property_data: Dict[str, Any],
+        language: str,
+        tone: str,
+    ) -> str:
+        """Build comprehensive prompt for improvement instructions."""
+
+        # Get language name from language code
+        language_name = LANGUAGE_OPTIONS.get(language, {}).get("name", language)
+
+        # Format scores
+        seo_score = evaluation_results.get("seo", {}).get("score", 0.0)
+        language_score = evaluation_results.get("language_match", {}).get("score", 0.0)
+        tone_score = evaluation_results.get("tone_match", {}).get("score", 0.0)
+        scores_text = f"SEO: {seo_score:.2f}, Language: {language_score:.2f}, Tone: {tone_score:.2f}\n"
+
+        # Format issues
+        all_issues = evaluation_results.get("all_findings", [])
+        issues_text = "\n".join([f"  - {issue}" for issue in all_issues])
+
+        # Get language-specific prompt template
+        prompt_template = IMPROVEMENT_PROMPTS.get(language, IMPROVEMENT_PROMPTS["en"])["prompt"]
+        print(
+            prompt_template.format(
+                language_name=language_name,
+                property_data=json.dumps(obj=property_data, indent=2),
+                tone=tone,
+                scores_text=scores_text,
+                current_content=current_content,
+                issues_text=issues_text,
+            )
+        )
+
+        return prompt_template.format(
+            language_name=language_name,
+            property_data=json.dumps(obj=property_data, indent=2),
+            tone=tone,
+            scores_text=scores_text,
+            current_content=current_content,
+            issues_text=issues_text,
+        )
 
     def _parse_suggestions_response(
         self, suggestions_text: str, evaluation_results: Dict[str, Any]
     ) -> Dict[str, Dict[str, Any]]:
-        """Parse AI response into structured improvement suggestions."""
+        """Parse AI response into structured improvement instructions."""
+
+        print("Raw suggestions response:", suggestions_text)
+        suggestions = {}
+
+        try:
+            # Try to extract JSON from the response
+            # Look for JSON object in the text (handle cases where there might be extra text)
+
+            # Find JSON object in the response
+            json_match = re.search(r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", suggestions_text, re.DOTALL)
+
+            if json_match:
+                json_str = json_match.group(0)
+                print("Extracted JSON:", json_str)
+
+                # Parse the JSON
+                suggestions_json = json.loads(json_str)
+
+                # Convert to our expected format
+                for section_key, instruction_text in suggestions_json.items():
+                    if instruction_text and instruction_text.strip():  # Only include non-empty instructions
+                        # Check if it's "None" or actual instruction
+                        instruction_clean = instruction_text.strip()
+                        if instruction_clean.lower() == "none":
+                            suggestions[section_key] = {"suggestion": "None"}
+                        else:
+                            suggestions[section_key] = {"suggestion": instruction_clean}
+            else:
+                print("No JSON found, attempting fallback parsing...")
+                # Fallback to the old parsing method if JSON is not found
+                suggestions = self._parse_suggestions_fallback(suggestions_text, evaluation_results)
+
+        except json.JSONDecodeError as e:
+            print(f"JSON parsing failed: {e}")
+            print("Attempting fallback parsing...")
+            # Fallback to the old parsing method
+            suggestions = self._parse_suggestions_fallback(suggestions_text, evaluation_results)
+        except Exception as e:
+            print(f"Unexpected error during parsing: {e}")
+            print("Attempting fallback parsing...")
+            suggestions = self._parse_suggestions_fallback(suggestions_text, evaluation_results)
+
+        print("Final parsed suggestions:", suggestions)
+        return suggestions
+
+    def _parse_suggestions_fallback(
+        self, suggestions_text: str, evaluation_results: Dict[str, Any]
+    ) -> Dict[str, Dict[str, Any]]:
+        """Fallback parsing method for non-JSON responses."""
 
         suggestions = {}
         current_section = None
@@ -152,117 +294,67 @@ Keep suggestions specific and actionable.
 
         lines = suggestions_text.split(sep="\n")
 
+        # Keywords for different languages
+        section_keywords = ["SECTION:", "SECCIÓN:", "SEÇÃO:"]
+        suggestions_keywords = ["Problem:", "Problema:", "Fix:", "Solución:", "Solução:"]
+
+        def starts_with_any(line: str, keywords: list) -> str:
+            """Check if line starts with any of the keywords and return the keyword."""
+            for keyword in keywords:
+                if line.startswith(keyword):
+                    return keyword
+            return ""
+
         for line in lines:
             line = line.strip()
 
-            if line.startswith("SECTION:"):
+            # Check for section start
+            section_keyword = starts_with_any(line, section_keywords)
+            if section_keyword:
                 # Save previous section if exists
                 if current_section and current_suggestion:
                     suggestions[current_section] = current_suggestion
 
                 # Start new section
-                current_section = line.replace("SECTION:", "").strip().lower()
-                current_suggestion = {
-                    "priority": "MEDIUM",
-                    "suggestion": "",
-                    "reason": "",
-                    "impact": "",
-                    "component_scores": self._get_section_scores(
-                        section=current_section, evaluation_results=evaluation_results
-                    ),
+                section_name = line.replace(section_keyword, "").strip().lower()
+                # Normalize section names from different languages
+                section_mapping = {
+                    "título": "title",
+                    "title": "title",
+                    "meta descripción": "meta_description",
+                    "meta description": "meta_description",
+                    "meta descrição": "meta_description",
+                    "h1": "h1",
+                    "descripción": "description",
+                    "description": "description",
+                    "descrição": "description",
+                    "características clave": "key_features",
+                    "key features": "key_features",
+                    "características chave": "key_features",
+                    "vecindario": "neighborhood",
+                    "neighborhood": "neighborhood",
+                    "vizinhança": "neighborhood",
+                    "llamada a la acción": "call_to_action",
+                    "call to action": "call_to_action",
+                    "chamada para ação": "call_to_action",
                 }
+                current_section = section_mapping.get(section_name, section_name.replace(" ", "_"))
+                current_suggestion = {
+                    "suggestion": "",
+                }
+                continue
 
-            elif line.startswith("Priority:") and current_section:
-                current_suggestion["priority"] = line.replace("Priority:", "").strip()
-
-            elif line.startswith("Suggestion:") and current_section:
-                current_suggestion["suggestion"] = line.replace("Suggestion:", "").strip()
-
-            elif line.startswith("Reason:") and current_section:
-                current_suggestion["reason"] = line.replace("Reason:", "").strip()
-
-            elif line.startswith("Impact:") and current_section:
-                current_suggestion["impact"] = line.replace("Impact:", "").strip()
+            # Check for suggestions/problems
+            suggestion_keyword = starts_with_any(line, suggestions_keywords)
+            if suggestion_keyword and current_section:
+                if current_suggestion["suggestion"]:
+                    current_suggestion["suggestion"] += " " + line
+                else:
+                    current_suggestion["suggestion"] = line
+                continue
 
         # Save last section
         if current_section and current_suggestion:
             suggestions[current_section] = current_suggestion
 
-        # Add fallback suggestions for critical issues
-        suggestions = self._add_fallback_suggestions(suggestions=suggestions, evaluation_results=evaluation_results)
-
         return suggestions
-
-    def _get_section_scores(self, section: str, evaluation_results: Dict[str, Any]) -> Dict[str, float]:
-        """Get relevant scores for a specific section."""
-        component_scores = evaluation_results.get("component_scores", {})
-
-        # Ahora todas las secciones consideran todos los componentes
-        return dict(component_scores)
-
-    def _add_fallback_suggestions(
-        self, suggestions: Dict[str, Dict[str, Any]], evaluation_results: Dict[str, Any]
-    ) -> Dict[str, Dict[str, Any]]:
-        """Add fallback suggestions for critical issues not covered by AI response."""
-
-        component_scores = evaluation_results.get("component_scores", {})
-
-        # Critical thresholds
-        critical_thresholds = {"seo": 0.6, "fact_accuracy": 0.7, "spelling": 0.8, "language_accuracy": 0.6}
-
-        # Add critical suggestions if missing
-        for component, threshold in critical_thresholds.items():
-            score = component_scores.get(component, 1.0)
-            if score < threshold:
-                self._add_critical_suggestion(suggestions=suggestions, component=component, score=score)
-
-        return suggestions
-
-    def _add_critical_suggestion(self, suggestions: Dict[str, Dict[str, Any]], component: str, score: float):
-        """Add critical suggestion for low-scoring component."""
-
-        critical_suggestions = {
-            "seo": {
-                "section": "meta_description",
-                "priority": "HIGH",
-                "suggestion": "Optimize meta description for SEO: ensure it's under 155 characters, includes target keywords, and accurately describes the property",
-                "reason": f"SEO score is critically low ({score:.2f})",
-                "impact": "SEO/Visibility",
-            },
-            "fact_accuracy": {
-                "section": "description",
-                "priority": "HIGH",
-                "suggestion": "Review all property details for accuracy: verify room counts, measurements, features, and location information match the property data",
-                "reason": f"Fact accuracy score is low ({score:.2f})",
-                "impact": "Accuracy/Trust",
-            },
-            "spelling": {
-                "section": "description",
-                "priority": "HIGH",
-                "suggestion": "Perform thorough spell-check and grammar review of all content",
-                "reason": f"Spelling score is low ({score:.2f})",
-                "impact": "Professional quality",
-            },
-            "language_accuracy": {
-                "section": "title",
-                "priority": "HIGH",
-                "suggestion": "Ensure all content is written in the correct target language with proper grammar and vocabulary",
-                "reason": f"Language accuracy score is low ({score:.2f})",
-                "impact": "Communication/Clarity",
-            },
-        }
-
-        if component in critical_suggestions:
-            critical_info = critical_suggestions[component]
-            section = critical_info["section"]
-
-            # Only add if section doesn't already have suggestions
-            if section not in suggestions:
-                suggestions[section] = {
-                    "priority": critical_info["priority"],
-                    "suggestion": critical_info["suggestion"],
-                    "reason": critical_info["reason"],
-                    "impact": critical_info["impact"],
-                    "component_scores": {component: score},
-                    "is_critical": True,
-                }

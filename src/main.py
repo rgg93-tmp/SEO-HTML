@@ -48,7 +48,6 @@ async def main():
             },
             "price": 650000,
             "listing_type": "sale",
-            "language": "en",
         },
     ]
 
@@ -68,7 +67,7 @@ async def main():
             html_content = await html_generator.generate_html(property_data=property_data, language="es", tone="luxury")
         else:
             html_content = await html_generator.generate_html(
-                property_data=property_data, language="en", tone="professional"
+                property_data=property_data, language="en", tone="family-oriented"
             )
 
         html_filename = f"data/property_{i}_listing.html"
@@ -76,8 +75,6 @@ async def main():
             f.write(html_content)
 
         logging.info(f"Generated {json_filename} and {html_filename}")
-
-        break
 
     logging.info("Sample property listings generated successfully!")
 

@@ -15,7 +15,7 @@ from agents.content_generation.call_to_action_agent import CallToActionAgent
 from evaluate.complete_evaluator import CompleteEvaluator
 from agents.evaluation.improvement_suggestion_agent import ImprovementSuggestionAgent
 
-from config.options import LANGUAGE_OPTIONS, TONE_OPTIONS
+from config.options import LANGUAGE_OPTIONS, TONE_OPTIONS, MODEL_OPTIONS
 
 
 class HTMLGenerator:
@@ -30,29 +30,36 @@ class HTMLGenerator:
 
     def __init__(
         self,
-        max_iterations: int = 1,
+        max_iterations: int = 3,
+        model: str = "gemma3n:e2b",
     ):
         """
         Initialize the HTML generator.
 
         Args:
             max_iterations: Maximum number of holistic refinement iterations
+            model: The model to use for content generation
         """
         self.max_iterations = max_iterations
+        self.model = model
         self.logger = logging.getLogger(__name__)
 
-        # Initialize agents once
+        # Validate model
+        if model not in MODEL_OPTIONS:
+            raise ValueError(f"Unsupported model: {model}. Supported models are: {list(MODEL_OPTIONS.keys())}")
+
+        # Initialize agents once with the specified model
         self.agents = {
-            "title": TitleAgent(),
-            "meta": MetaDescriptionAgent(),
-            "h1": H1Agent(),
-            "description": DescriptionAgent(),
-            "key_features": KeyFeaturesAgent(),
-            "neighborhood": NeighborhoodAgent(),
-            "call_to_action": CallToActionAgent(),
+            "title": TitleAgent(model=model),
+            "meta": MetaDescriptionAgent(model=model),
+            "h1": H1Agent(model=model),
+            "description": DescriptionAgent(model=model),
+            "key_features": KeyFeaturesAgent(model=model),
+            "neighborhood": NeighborhoodAgent(model=model),
+            "call_to_action": CallToActionAgent(model=model),
         }
         self.complete_evaluator = CompleteEvaluator()
-        self.improvement_agent = ImprovementSuggestionAgent()
+        self.improvement_agent = ImprovementSuggestionAgent(model=model)
 
     async def generate_html(
         self, property_data: Dict[str, Any], language: str = "en", tone: str = "professional"
@@ -66,7 +73,7 @@ class HTMLGenerator:
         language_name = LANGUAGE_OPTIONS.get(language, None).get("name", language)
         self.logger.info(f"Generating initial content drafts in {language_name} with {tone} tone...")
         tasks = {
-            section: agent.generate_initial(property_data=property_data, language=language_name, tone=tone)
+            section: agent.generate_initial(property_data=property_data, language=language, tone=tone)
             for section, agent in self.agents.items()
         }
         results = await asyncio.gather(*tasks.values())
@@ -119,9 +126,10 @@ class HTMLGenerator:
                 self.logger.info("Holistic refinement complete: Content quality is excellent.")
                 break
             section_improvements = await improvement_agent.generate_section_improvements(
+                current_content=current_html,
                 evaluation_results=evaluation_results,
                 property_data=property_data,
-                language_name=language_name,
+                language=language,
                 tone=tone,
             )
             print("###########################" * 40)
@@ -137,7 +145,7 @@ class HTMLGenerator:
                 section_improvements=section_improvements,
                 property_data=property_data,
                 agents=agents,
-                language_name=language_name,
+                language=language,
                 tone=tone,
             )
         # Evaluación final
@@ -176,7 +184,7 @@ class HTMLGenerator:
         section_improvements: Dict[str, Dict[str, Any]],
         property_data: Dict[str, Any],
         agents: Dict[str, Any],
-        language_name: str,
+        language: str,
         tone: str,
     ) -> Dict[str, str]:
         """
@@ -187,7 +195,7 @@ class HTMLGenerator:
             section_improvements: Section-specific improvement suggestions
             property_data: Property data for context
             agents: Content generation agents
-            language_name: Target language
+            language: Target language
             tone: Target tone
 
         Returns:
@@ -196,22 +204,25 @@ class HTMLGenerator:
         refined_sections = sections.copy()
 
         for section_name, improvement_info in section_improvements.items():
-            if section_name in agents and improvement_info.get("suggestion"):
+            if (
+                section_name in agents
+                and improvement_info.get("suggestion")
+                and improvement_info.get("suggestion") is not None
+            ):
                 # Extract current content
                 current_content = sections.get(section_name, "")
 
                 # Get improvement suggestion
                 suggestion = improvement_info["suggestion"]
-                priority = improvement_info.get("priority", "MEDIUM")
 
-                self.logger.info(f"Refining {section_name} (Priority: {priority}): {suggestion[:100]}...")
+                self.logger.info(f"Refining {section_name}): {suggestion[:100]}...")
 
                 # Apply refinement using the appropriate agent
                 refined_content = await agents[section_name].refine(
                     property_data=property_data,
                     current_content=current_content,
                     suggestion=suggestion,
-                    language=language_name,
+                    language=language,
                     tone=tone,
                 )
 
@@ -274,6 +285,8 @@ class HTMLGenerator:
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     {title}
     {meta}
+</head>
+<body>
     {h1}
     {description}
     {key_features}

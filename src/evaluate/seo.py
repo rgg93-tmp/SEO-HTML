@@ -20,7 +20,11 @@ def _extract_content_issues(report_data: Dict[str, Any]) -> List[Dict[str, Any]]
     }
 
     issues = report_data.get("issues", [])
-    return [issue for issue in issues if issue.get("element_type") in content_elements]
+    return [
+        issue
+        for issue in issues
+        if (issue.get("element_type") in content_elements and issue.get("recommendation") is not None)
+    ]
 
 
 class SeoEvaluator(BaseEvaluator):
@@ -48,6 +52,5 @@ class SeoEvaluator(BaseEvaluator):
             "evaluator": "SeoEvaluator",
             "score": score,
             "passed": score >= 0.7,
-            "summary": f"SEO analysis completed with score: {score:.2f}",
             "findings": findings,
         }

@@ -28,15 +28,6 @@ class FactEvaluator(BaseEvaluator):
         text = re.sub(pattern=r"<[^>]+>", repl="", string=html_content)
         text = " ".join(text.split())  # Clean whitespace
 
-        if not property_data:
-            return {
-                "evaluator": "FactEvaluator",
-                "score": 1.0,
-                "passed": True,
-                "summary": "No property data provided for fact checking",
-                "findings": [],
-            }
-
         # Run async evaluation using the agent
         result = await self.fact_checker_agent.evaluate(content=text, property_data=property_data)
 

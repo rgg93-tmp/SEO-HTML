@@ -16,7 +16,7 @@ dependencies = [
     "autogen-agentchat>=0.7.3",
     "seokar>=1.0.0",
     "pyspellchecker>=0.8.1",
-    "readability>=0.3.1",
+    "textstat>=0.7.3",
     "syntok>=1.4.4",
 ]
 

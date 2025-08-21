@@ -5,8 +5,8 @@ Configuration settings for language and tone options.
 # Language options with their codes and full names
 LANGUAGE_OPTIONS = {
     "en": {"name": "English", "code": "en", "spell_check_code": "en"},
-    "es": {"name": "Spanish", "code": "es", "spell_check_code": "es"},
-    "pt": {"name": "Portuguese", "code": "pt", "spell_check_code": "pt"},
+    "es": {"name": "Español", "code": "es", "spell_check_code": "es"},
+    "pt": {"name": "Português", "code": "pt", "spell_check_code": "pt"},
 }
 
 # Tone options with descriptions
@@ -37,6 +37,18 @@ TONE_OPTIONS = {
     },
 }
 
+# Model options with descriptions
+MODEL_OPTIONS = {
+    "gemma3n:e2b": {
+        "name": "Gemma3n E2B",
+        "description": "Recommended high-performance model with optimized efficiency",
+    },
+    "gemma3:1b-it-qat": {
+        "name": "Gemma3 1B IT QAT",
+        "description": "Lightweight quantized model for faster inference",
+    },
+}
+
 
 def get_language_options():
     """Get list of language options for dropdowns."""
@@ -46,6 +58,11 @@ def get_language_options():
 def get_tone_options():
     """Get list of tone options for dropdowns."""
     return [(f"{tone['name']} - {tone['description']}", code) for code, tone in TONE_OPTIONS.items()]
+
+
+def get_model_options():
+    """Get list of model options for dropdowns."""
+    return [(f"{model['name']} - {model['description']}", code) for code, model in MODEL_OPTIONS.items()]
 
 
 def get_language_name(code: str) -> str:
