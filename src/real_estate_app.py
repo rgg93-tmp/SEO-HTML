@@ -3,7 +3,6 @@ import logging
 import json
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
-from typing import Tuple
 
 from core.html_generator import HTMLGenerator
 from config.options import LANGUAGE_OPTIONS, TONE_OPTIONS, MODEL_OPTIONS
@@ -125,9 +124,9 @@ with gr.Blocks(
                     info="Select the AI model for content generation",
                 )
                 max_iterations_slider = gr.Slider(
-                    minimum=1,
+                    minimum=0,
                     maximum=10,
-                    value=3,
+                    value=1,
                     step=1,
                     label="Max Iterations",
                     info="Maximum number of refinement iterations (higher values = better quality but slower)",

@@ -30,7 +30,7 @@ class HTMLGenerator:
 
     def __init__(
         self,
-        max_iterations: int = 3,
+        max_iterations: int = 1,
         model: str = "gemma3n:e2b",
     ):
         """

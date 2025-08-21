@@ -6,9 +6,6 @@ from agents.evaluation.language_evaluator_agent import LanguageEvaluatorAgent
 from agents.evaluation.tone_evaluator_agent import ToneEvaluatorAgent
 import textstat
 
-import readability
-import syntok.segmenter as segmenter
-
 
 class LanguageMatchEvaluator(BaseEvaluator):
     def __init__(self):

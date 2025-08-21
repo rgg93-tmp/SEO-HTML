@@ -17,11 +17,14 @@ dependencies = [
     "seokar>=1.0.0",
     "pyspellchecker>=0.8.1",
     "textstat>=0.7.3",
-    "syntok>=1.4.4",
+    "mypy>=1.17.0",
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0"
 ]
 
 [dependency-groups]
 dev = [
     "mypy>=1.17.0",
     "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0"
 ]
