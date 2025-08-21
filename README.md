@@ -4,32 +4,6 @@ This project is a **Gradio web app** that generates **high‑quality, SEO‑opti
 
 It outputs JSON sections tagged by specific HTML elements so they can be integrated dynamically into a website template.
 
-## ▶️ Run code
- 
-### main.py
-
-There is a `main.py` example that triggers a sample run and writes outputs into `data/` for quick inspection.
-
-```bash
-uv run src/main.py
-```
-
-## 🖥️ Run app (Gradio UI)
- 
-### app.py
-
-But the main goal should be to run the interactive app. The app is deployed locally with uvicorn on the port 5000. For that just run:
-
-```bash
-uv run src/app.py
-```
-
-There is a `main.py` example that triggers a sample run and writes outputs into `data/` for quick inspection.
-
-```bash
-uv run src/main.py
-```
-
 ---
 
 ## 📘 Problem Statement
@@ -182,12 +156,12 @@ Recommended models are:
 - gemma3n:e2b
 - gemma3:1b-it-qat
 
----
 
+---
 
 ## ▶️ Run code
  
-### main.py
+### main.py
 
 There is a `main.py` example that triggers a sample run and writes outputs into `data/` for quick inspection.
 
@@ -195,7 +169,9 @@ There is a `main.py` example that triggers a sample run and writes outputs into 
 uv run src/main.py
 ```
 
-## 🖥️ Run app (Gradio UI)
+---
+
+## 🖥️ Run app (Gradio UI)
  
 ### app.py
 
@@ -204,6 +180,7 @@ But the main goal should be to run the interactive app. The app is deployed loca
 ```bash
 uv run src/app.py
 ```
+
 
 After that, you should be able to navigate to:
 
